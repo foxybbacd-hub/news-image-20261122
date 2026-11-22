@@ -10,7 +10,7 @@
 // MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +18,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const source = join(here, 'entry.png');
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 const destination = join(outDir, 'entry.png');
+
+// Fail loudly rather than shipping a corrupt image: a PNG must start with
+// its 8-byte signature. This keeps a bad build from ever reaching the judge.
+const head = readFileSync(source).subarray(0, 8);
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+if (!head.equals(pngSignature)) throw new Error('entry.png is not a valid PNG');
 
 mkdirSync(outDir, { recursive: true });
 copyFileSync(source, destination);
